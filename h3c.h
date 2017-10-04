@@ -90,6 +90,7 @@
 #define MD5_LEN_LEN 1
 #define H3C_LEN_LEN 1
 
+//EAPOL数据包的格式，其中PAE  Ethernet type 表示协议类型，为Ox888E
 #ifndef ETH_P_PAE
 #define ETH_P_PAE 0x888E
 #endif
@@ -153,6 +154,7 @@ struct packet {
 	struct eap eap_header;
 }__attribute__ ((packed)) packet;
 
+//pc发起的start的报文的目的地址为mac是0180c2000003
 const static char PAE_GROUP_ADDR[] = { 0x01, 0x80, 0xc2, 0x00, 0x00, 0x03 };/* broadcast mac address */
 
 const static char VERSION_INFO[] = { 0x06, 0x07, 'b', 'j', 'Q', '7', 'S', 'E',
