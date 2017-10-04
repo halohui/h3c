@@ -21,6 +21,8 @@
  *
  */
 
+//https://github.com/renbaoke/h3c
+
 #include <signal.h>
 #include "echo.h"
 #include "h3c.h"
@@ -61,7 +63,7 @@ int main(int argc, char **argv) {
 	/* must run as root */
 	if (geteuid() != 0)
     {
-		fprintf(stderr, "Run as root, please.\n");
+		fprintf(stderr, "Run as root, please!\n");
 		exit(-1);
 	}
 
@@ -96,14 +98,13 @@ int main(int argc, char **argv) {
         //SIGTERM 发送给本程序的终止请求信号
         signal(SIGTERM, exit_with_echo_on);
 
-        //输入密码的时候先关闭回显
+        //输入密码的时候先关闭回显功能
 		echo_off();
 		fgets(password, PWD_LEN - 1, stdin);
-        //密码输入完后开始回显
+        //密码输入完后开启回显功能
 		echo_on();
 
-		/* replace '\n' with '\0', as it is NOT part of password */
-        //将密码输入的\n改为'\0'
+		/* replace '\n' with '\0', as it is NOT part of password *///将密码输入的\n改为'\0'
 		password[strlen(password) - 1] = '\0';
 		putchar('\n');
 	}
@@ -129,7 +130,8 @@ int main(int argc, char **argv) {
 	signal(SIGINT, exit_handler);
 	signal(SIGTERM, exit_handler);
 
-	for (;;) {
+	while(1)
+    {
 		if (h3c_response(success_handler, failure_handler, unkown_eapol_handler,
 				unkown_eap_handler, got_response_handler) != SUCCESS) {
 			fprintf(stderr, "Failed to response: %s\n", strerror(errno));

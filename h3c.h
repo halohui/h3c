@@ -123,9 +123,9 @@
 // packed 主要目的是让编译器更紧凑的使用内存，当作用与变量时，告诉编译应该尽可能小的对齐，也就是1字节对齐
 //作用于结构体时，相当于给每个成员加上了packed属性，这时结构体应该尽可能少的占用内存
 struct eapol {
-	unsigned char version;
-	unsigned char type;
-	unsigned short length;
+	unsigned char version; //版本
+	unsigned char type;    //类型
+	unsigned short length; //长度
 }__attribute__ ((packed)) eapol;
 
 struct eap {
@@ -134,6 +134,19 @@ struct eap {
 	unsigned short length;
 }__attribute__ ((packed)) eap;
 
+
+/*
+* EAP协议用于PPP等点对点的网络中的认证，可支持多种认证机制，在802.1X中，对EAP协议进行了简单的修改形成了
+* EAPOL（EAP overLAN）协议，使其能在广播式的以太网中使用，EAP工作在OSI的第二层（数据链路层），不需要用户
+* 事先获取IP地址，简单易实现，主要用于客户端和认证者之间的认证信息交互
+* */
+
+/*
+* struct ether_header{
+* u_int8 ether_dhost[ETH_ALEN]; // destination ether addr,6个字节
+* u_int8 ether_shost[ETH_ALEN]; //source ether addr，8个字节
+* u_int16_t ether_type; //packet type ID field
+* */
 struct packet {
 	struct ether_header eth_header;
 	struct eapol eapol_header;
