@@ -10,6 +10,9 @@ set(SOURCE_FILES
         h3c.h
         h3c.c
         handler.h
-        handler.c)
+        handler.c
+        ./md5/md5.h
+        ./md5/md5.c
+        )
 
 add_executable(h3c ${SOURCE_FILES})
