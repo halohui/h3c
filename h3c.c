@@ -69,10 +69,16 @@ static struct bpf_insn insns[] =
                 BPF_STMT(BPF_RET + BPF_K, (u_int) -1),
                 BPF_STMT(BPF_RET + BPF_K, 0)
         };
-static struct bpf_program filter = {
-        sizeof(insns) / sizeof(insns[0]),
-        insns
-};
+
+/*
+* 指令数组长度
+* 指令数组
+* */
+static struct bpf_program filter =
+        {
+                sizeof(insns) / sizeof(insns[0]),
+                insns
+        };
 #else
 static struct sockaddr_ll addr;
 #endif /* AF_LINK */
