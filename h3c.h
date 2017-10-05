@@ -124,11 +124,15 @@
 // packed 主要目的是让编译器更紧凑的使用内存，当作用与变量时，告诉编译应该尽可能小的对齐，也就是1字节对齐
 //作用于结构体时，相当于给每个成员加上了packed属性，这时结构体应该尽可能少的占用内存
 struct eapol {
-	unsigned char version; //版本
-	unsigned char type;    //类型
-	unsigned short length; //长度
+	unsigned char version; //eap帧发送方支持的协议版本
+	unsigned char type;    //eapol协议帧的类型
+	unsigned short length; //eapol数据长度，不包括帧的头部，为0表示后面没有数据域
 }__attribute__ ((packed)) eapol;
 
+
+//当eapol数据帧的type为EAP-packet（值为00)时，PACKET BODY 为EAP 数据包结构
+//code 指明EAP包的类型，分别为Request，Response,Success,Failure
+// 其中Success和Failure没有Data域，相应的length域的值为4
 struct eap {
 	unsigned char code;
 	unsigned char id;

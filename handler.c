@@ -27,6 +27,9 @@
 
 int success_handler() {
 	printf("You are now ONLINE.\n");
+    //第2个参数为0表示将标准输入和输出都重定向到/dev/null中
+    //第1个参数为0表示将工作目录切换到工作目录
+    //经过daemon函数处理过的程序将运行在后台，成为一个daemon程序
 	daemon(0, 0);
 	return SUCCESS;
 }

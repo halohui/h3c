@@ -60,7 +60,7 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	/* must run as root */
+	/* must run as root  需要以root身份运行*/
 	if (geteuid() != 0)
     {
 		fprintf(stderr, "Run as root, please!\n");
@@ -68,14 +68,14 @@ int main(int argc, char **argv) {
 	}
 
 
-//eth0,eth1 表示网卡1; 网卡2 lo表示127.0.0.1 即localhost
+    /*interface表示网卡，其中eth0,eth1 表示网卡1; 网卡2 lo表示127.0.0.1 即localhost*/
 	if (interface == NULL || username == NULL)
     {
 		usage(stderr);
 		exit(-1);
 	}
-
-	if (h3c_set_username(username) != SUCCESS)  //设置用户名
+    /*设置用户名*/
+	if (h3c_set_username(username) != SUCCESS)
     {
 		fprintf(stderr, "Failed to set username.\n");
 		exit(-1);
@@ -133,7 +133,8 @@ int main(int argc, char **argv) {
 	while(1)
     {
 		if (h3c_response(success_handler, failure_handler, unkown_eapol_handler,
-				unkown_eap_handler, got_response_handler) != SUCCESS) {
+				unkown_eap_handler, got_response_handler) != SUCCESS)
+				{
 			fprintf(stderr, "Failed to response: %s\n", strerror(errno));
 			exit(-1);
 		}

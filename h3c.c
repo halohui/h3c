@@ -76,6 +76,10 @@ static struct sockaddr_ll addr;
 
 static inline void set_eapol_header(unsigned char type, unsigned short length)
 {
+    //eapol 数据包的头包括协议类型，
+    //协议版本表示EAPOL帧发送方所支持的协议版本号
+    //type 表示EAPOL数据帧的类型，EAP-packet值为0x00认证信息帧，用于承载认信息，该帧在设备端重新封装并承载于
+    //RADIUS协议上，便于穿越复杂的网络到达认证服务器
     send_pkt->eapol_header.version = EAPOL_VERSION; //EAPOL_VERSION 的值为1
     send_pkt->eapol_header.type = type;
     send_pkt->eapol_header.length = length;
@@ -207,7 +211,7 @@ int h3c_init(char *_interface)
     struct ifreq ifr; //ifreq用来保存接口信息
 
     /* Set destination mac address. */
-    // 目的mac地址为0x0180c2000003,mac地址长度为6个字节
+    // 目的mac地址为0x0180c2000003,mac地址长度为6个字节，所以拷贝6个字节的长度
     memcpy(send_pkt->eth_header.ether_dhost, PAE_GROUP_ADDR, ETH_ALEN);
 
     /* Set ethernet type. */
@@ -219,6 +223,7 @@ int h3c_init(char *_interface)
 
 //#if 的含义是如果#if后面的表达式为true，则编译它控制的代码
 //#ifdef 表示如果有定义
+// AF_LINK链路地址协议
 #ifdef AF_LINK
     struct ifaddrs *ifhead, *ifa;
     char device[] = "/dev/bpf0";
@@ -281,7 +286,7 @@ int h3c_init(char *_interface)
 
 int h3c_set_username(char *_username)
 {
-    int username_length = strlen(_username);
+    int username_length = (int)strlen(_username);
     //用户名最长为15字符
     if (username_length > USR_LEN - 1)
         return USR_TOO_LONG;
@@ -293,7 +298,7 @@ int h3c_set_username(char *_username)
 
 int h3c_set_password(char *_password)
 {
-    int password_length = strlen(_password);
+    int password_length = (int)strlen(_password);
 
     //密码最长为15个字符
     if (password_length > PWD_LEN - 1)
@@ -305,12 +310,17 @@ int h3c_set_password(char *_password)
 
 int h3c_start()
 {
+    //设置eapol报头的数据帧类型是EAPOL_START，其值为1，表示是认证发起帧
     set_eapol_header(EAPOL_START, 0);  //EAPOL协议是局域网的扩展认证协议，POL是一个普遍的认证机制
+
+    //除去以太网的报头
+    // 和eapol协议报头（这里只有3个域，分别协议版本，数据帧类型，以及长度）
     return sendout(sizeof(struct ether_header) + sizeof(struct eapol));
 }
 
 int h3c_logoff()
 {
+    //设置退出请求帧
     set_eapol_header(EAPOL_LOGOFF, 0);
     return sendout(sizeof(struct ether_header) + sizeof(struct eapol));
 }
@@ -322,6 +332,7 @@ int h3c_response(int (*success_callback)(void), int (*failure_callback)(void),
     if (recvin(BUF_LEN) == RECV_ERR)
         return RECV_ERR;
 
+    //EAPOL_EAPPACKET 表示认证信息帧，用于承载认证信息
     if (recv_pkt->eapol_header.type != EAPOL_EAPPACKET)
     {
         /* Got unknown eapol type. */
