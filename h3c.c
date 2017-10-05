@@ -208,10 +208,11 @@ static int send_h3c(unsigned char packet_id)
 
 int h3c_init(char *_interface)
 {
+    /*  初始化信息包括组播mac地址，协议类型888E，以及接口名字*/
     struct ifreq ifr; //ifreq用来保存接口信息
 
     /* Set destination mac address. */
-    // 目的mac地址为0x0180c2000003,mac地址长度为6个字节，所以拷贝6个字节的长度
+    // 目的组播mac地址为0x0180c2000003,mac地址长度为6个字节，所以拷贝6个字节的长度
     memcpy(send_pkt->eth_header.ether_dhost, PAE_GROUP_ADDR, ETH_ALEN);
 
     /* Set ethernet type. */
@@ -227,13 +228,26 @@ int h3c_init(char *_interface)
    AF_LINK链路地址协议*/
 #ifdef AF_LINK
     struct ifaddrs *ifhead, *ifa;
+    /*
+    * BPF 是类unix上数据链路层的一种原始接口，提供原始的数据链路层封装包的收发
+    * BSD 分组过滤程序(BPF)是一种软件设备，用于过滤网络接口的数据流，即给网络接口加上开关
+    * 应用程序打开/dev/bpf0, /dev/bpf1等等
+    * */
+
+    /*
+    * BPF的工作步骤如下：当一个数据包到达网络接口时，数据链路层的驱动会把它向系统的协议栈传送。
+    * 但如果 BPF 监听接口，驱动首先调用 BPF。BPF 首先进行过滤操作，然后把数据包存放在过滤器相关的缓冲区中，
+    * 最后设备驱动再次获得控制。注意到BPF是先对数据包过滤再缓冲
+    * 通过若干itoc命令，可以配置BPF设备，把它与每个网络接口相关联，并安装过滤程序，
+    * 从而能够选择性的接收输入的分组，BPF设备打开后，应用进程通过读写设备来接收分组，或将分组放入到网络接口队列中
+    * */
     char device[] = "/dev/bpf0";
     int n = 0;
 
     do
     {
-        sockfd = open(device, O_RDWR);
-    } while ((sockfd == -1) && (errno == EBUSY) && (device[8]++ != '9'));
+        sockfd = open(device, O_RDWR); //以读写方式打开
+    } while ((sockfd == -1) && (errno == EBUSY) && (device[8]++ != '9')); //如果忙的话，打开下一个设备
 
     if (sockfd == -1)
         return BPF_OPEN_ERR;
@@ -311,13 +325,16 @@ int h3c_set_password(char *_password)
 
 }
 
+/*把组播地址，本机mac地址，以及上一层的协议类型
+* 本机支持的eapol客户端版本，帧类型为认证发起帧，长度为0
+* */
 int h3c_start()
 {
     //设置eapol报头的数据帧类型是EAPOL_START，其值为1，表示是认证发起帧
     set_eapol_header(EAPOL_START, 0);  //EAPOL协议是局域网的扩展认证协议，POL是一个普遍的认证机制
 
-    //除去以太网的报头
-    // 和eapol协议报头（这里只有3个域，分别协议版本，数据帧类型，以及长度）
+     //以太网的报头（目的地址，源地址，以及上一层的协议类型）
+    // 和eapol协议报头（这里只有3个域，分别协议版本其默认值为1，数据帧类型是认证发起，以及长度为0）
     return sendout(sizeof(struct ether_header) + sizeof(struct eapol));
 }
 
