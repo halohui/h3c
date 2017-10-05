@@ -72,10 +72,12 @@
 #define EAPOL_KEY 3
 #define EAPOL_ASF 4
 
+
 #define EAP_TYPE_ID 1
 #define EAP_TYPE_MD5 4
 #define EAP_TYPE_H3C 7
 
+/* EAP 数据包的code字段的值*/
 #define EAP_REQUEST 1
 #define EAP_RESPONSE 2
 #define EAP_SUCCESS 3
@@ -149,7 +151,7 @@ struct eap {
 /*
 * struct ether_header{
 * u_int8 ether_dhost[ETH_ALEN]; // destination ether addr,6个字节
-* u_int8 ether_shost[ETH_ALEN]; //source ether addr，8个字节
+* u_int8 ether_shost[ETH_ALEN]; //source ether addr，6个字节
 * u_int16_t ether_type; //packet type ID field
 * */
 struct packet {

@@ -25,6 +25,9 @@
 #include "h3c.h"
 #include "echo.h"
 
+/*
+* 认证服务器响应是成功后，便将主函数变成一个后台进程执行
+*/
 int success_handler() {
 	printf("You are now ONLINE.\n");
     //第2个参数为0表示将标准输入和输出都重定向到/dev/null中

@@ -56,16 +56,19 @@ static char username[USR_LEN];
 static char password[PWD_LEN];
 
 //BUF_LEN的长度为256
+/* 发送缓冲区 */
 static unsigned char send_buf[BUF_LEN];
+/* 接收缓冲区 */
 static unsigned char recv_buf[BUF_LEN];
 
 #ifdef AF_LINK
-static struct bpf_insn insns[] = {
-        BPF_STMT(BPF_LD + BPF_H + BPF_ABS, 12),
-        BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, ETH_P_PAE, 0, 1),
-        BPF_STMT(BPF_RET + BPF_K, (u_int) -1),
-        BPF_STMT(BPF_RET + BPF_K, 0)
-};
+static struct bpf_insn insns[] =
+        {
+                BPF_STMT(BPF_LD + BPF_H + BPF_ABS, 12),
+                BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, ETH_P_PAE, 0, 1),
+                BPF_STMT(BPF_RET + BPF_K, (u_int) -1),
+                BPF_STMT(BPF_RET + BPF_K, 0)
+        };
 static struct bpf_program filter = {
         sizeof(insns) / sizeof(insns[0]),
         insns
@@ -95,6 +98,7 @@ static inline void set_eap_header(unsigned char code, unsigned char id, unsigned
 static int sendout(int length)
 {
 #ifdef AF_LINK
+    /* 将send_buf 里的内容的内容写入到打开的设备文件中*/
     if (write(sockfd, send_buf, length) == -1)
         return SEND_ERR;
     else
@@ -130,10 +134,8 @@ static int recvin(int length)
 
 static int send_id(unsigned char packet_id)
 {
-    int username_length = strlen(username);
-    unsigned short len = htons(
-            sizeof(struct eap) + TYPE_LEN + sizeof(VERSION_INFO)
-            + username_length);
+    int username_length = (int) strlen(username);
+    unsigned short len = htons(sizeof(struct eap) + TYPE_LEN + sizeof(VERSION_INFO) + username_length);
 
     set_eapol_header(EAPOL_EAPPACKET, len);
     set_eap_header(EAP_RESPONSE, packet_id, len);
@@ -142,9 +144,7 @@ static int send_id(unsigned char packet_id)
     memcpy(eap_id_info(send_pkt), VERSION_INFO, sizeof(VERSION_INFO));
     memcpy(eap_id_username(send_pkt), username, username_length);
 
-    return sendout(
-            sizeof(struct packet) + TYPE_LEN + sizeof(VERSION_INFO)
-            + username_length);
+    return sendout(sizeof(struct packet) + TYPE_LEN + sizeof(VERSION_INFO) + username_length);
 }
 
 static void get_md5_digest(unsigned char *digest, unsigned char packet_id, char *passwd, unsigned char *md5data)
@@ -223,46 +223,58 @@ int h3c_init(char *_interface)
 
     strcpy(ifr.ifr_name, _interface); //保存接口名字
 
-  /*#if 的含义是如果#if后面的表达式为true，则编译它控制的代码
-   #ifdef 表示如果有定义
-   AF_LINK链路地址协议*/
+    /*#if 的含义是如果#if后面的表达式为true，则编译它控制的代码
+     #ifdef 表示如果有定义
+     AF_LINK链路地址协议*/
 #ifdef AF_LINK
     struct ifaddrs *ifhead, *ifa;
     /*
     * BPF 是类unix上数据链路层的一种原始接口，提供原始的数据链路层封装包的收发
     * BSD 分组过滤程序(BPF)是一种软件设备，用于过滤网络接口的数据流，即给网络接口加上开关
-    * 应用程序打开/dev/bpf0, /dev/bpf1等等
-    * */
-
-    /*
+    * 应用程序打开/dev/bpf0, /dev/bpf1等等设备
+    *
     * BPF的工作步骤如下：当一个数据包到达网络接口时，数据链路层的驱动会把它向系统的协议栈传送。
     * 但如果 BPF 监听接口，驱动首先调用 BPF。BPF 首先进行过滤操作，然后把数据包存放在过滤器相关的缓冲区中，
-    * 最后设备驱动再次获得控制。注意到BPF是先对数据包过滤再缓冲
-    * 通过若干itoc命令，可以配置BPF设备，把它与每个网络接口相关联，并安装过滤程序，
+    * 最后设备驱动再次获得控制，但是请注意BPF是先对数据包过滤再缓冲
+    * 通过若干ioctl命令，可以配置BPF设备，把它与每个网络接口相关联，并安装过滤程序，
     * 从而能够选择性的接收输入的分组，BPF设备打开后，应用进程通过读写设备来接收分组，或将分组放入到网络接口队列中
+    * www.gsp.com/cgi-bin/man.cgi?topic=bpf
     * */
     char device[] = "/dev/bpf0";
     int n = 0;
 
     do
     {
-        sockfd = open(device, O_RDWR); //以读写方式打开
-    } while ((sockfd == -1) && (errno == EBUSY) && (device[8]++ != '9')); //如果忙的话，打开下一个设备
+        /*以读写方式打开BPF接口*/
+        sockfd = open(device, O_RDWR);
+        /*如果当前设备文件正在使用中，则打开失败，并将errno设置为EBUSY，因此轮询打开下一个设备设备文件*/
+    } while ((sockfd == -1) && (errno == EBUSY) && (device[8]++ != '9'));
+
 
     if (sockfd == -1)
         return BPF_OPEN_ERR;
 
     n = BUF_LEN;
+    /*设置BPF读取的缓冲区的长度,必须先设置缓冲区长度*/
     if (ioctl(sockfd, BIOCSBLEN, &n) == -1)
         return BPF_SET_BUF_LEN_ERR;
 
+    /*
+    * 打开BPF设备后，文件描述符必须绑定到特定网络接口，这里是eth0
+    * 必须在读取任何数据包之前打开该命令，网络接口由ifreq中的ifr_name指定
+    * */
     if (ioctl(sockfd, BIOCSETIF, &ifr) == -1)
         return BPF_SET_IF_ERR;
 
+    /*设置BPF的过滤程序来丢弃不感兴趣的包*/
     if (ioctl(sockfd, BIOCSETF, &filter) == -1)
         return BPF_SET_FILTER_ERR;
 
     n = 1;
+    /*
+    * 根据参数的值来确定启用或者禁用"立即模式"，当立即模式启用时，数据包接收后立即读取，否则将
+    * 阻塞，直到内核缓冲区变满或发生超时，猜测1应该是立即读取模式。
+    * */
     if (ioctl(sockfd, BIOCIMMEDIATE, &n) == -1)
         return BPF_SET_IMMEDIATE_ERR;
 
@@ -301,7 +313,7 @@ int h3c_init(char *_interface)
 
 int h3c_set_username(char *_username)
 {
-    int username_length = (int)strlen(_username);
+    int username_length = (int) strlen(_username);
     //用户名最长为15字符
     if (username_length > USR_LEN - 1)
         return USR_TOO_LONG;
@@ -313,7 +325,7 @@ int h3c_set_username(char *_username)
 
 int h3c_set_password(char *_password)
 {
-    int password_length = (int)strlen(_password);
+    int password_length = (int) strlen(_password);
 
     /*PWD_LEN==16，密码最长为15个字符*/
     if (password_length > PWD_LEN - 1)
@@ -333,18 +345,23 @@ int h3c_start()
     //设置eapol报头的数据帧类型是EAPOL_START，其值为1，表示是认证发起帧
     set_eapol_header(EAPOL_START, 0);  //EAPOL协议是局域网的扩展认证协议，POL是一个普遍的认证机制
 
-     //以太网的报头（目的地址，源地址，以及上一层的协议类型）
+    //以太网的报头（目的地址，源地址，以及上一层的协议类型）
     // 和eapol协议报头（这里只有3个域，分别协议版本其默认值为1，数据帧类型是认证发起，以及长度为0）
     return sendout(sizeof(struct ether_header) + sizeof(struct eapol));
 }
 
 int h3c_logoff()
 {
-    //设置退出请求帧
+    /*设置eapol帧为退出请求帧*/
     set_eapol_header(EAPOL_LOGOFF, 0);
     return sendout(sizeof(struct ether_header) + sizeof(struct eapol));
 }
 
+/*
+* 传入的参数为：
+* success_handler, failure_handler, unkown_eapol_handler,
+* unkown_eap_handler, got_response_handler)
+* */
 int h3c_response(int (*success_callback)(void), int (*failure_callback)(void),
                  int (*unkown_eapol_callback)(void), int (*unkown_eap_callback)(void),
                  int (*got_response_callback)(void))
@@ -352,7 +369,7 @@ int h3c_response(int (*success_callback)(void), int (*failure_callback)(void),
     if (recvin(BUF_LEN) == RECV_ERR)
         return RECV_ERR;
 
-    //EAPOL_EAPPACKET 表示认证信息帧，用于承载认证信息
+    //EAPOL_EAPPACKET 表示认证信息帧，用于承载认证信息,如果读出来的是这个就
     if (recv_pkt->eapol_header.type != EAPOL_EAPPACKET)
     {
         /* Got unknown eapol type. */
@@ -361,6 +378,8 @@ int h3c_response(int (*success_callback)(void), int (*failure_callback)(void),
         else
             return EAPOL_UNHANDLED;
     }
+
+    /*认证成功*/
     if (recv_pkt->eap_header.code == EAP_SUCCESS)
     {
         /* Got success. */
@@ -368,6 +387,8 @@ int h3c_response(int (*success_callback)(void), int (*failure_callback)(void),
             return success_callback();
         else
             return SUCCESS_UNHANDLED;
+
+        /* 认证失败*/
     } else if (recv_pkt->eap_header.code == EAP_FAILURE)
     {
         /* Got failure. */
