@@ -217,13 +217,14 @@ int h3c_init(char *_interface)
     /* Set ethernet type. */
     //htons(x) 将主机的字节序转为网络字节序，网络字节序是TCP、IP 规定的好的一种数据表示格式
     //它与具体的CPU类型，操作系统无关，采用大端(big endian)的排序方式
+    //ETH_P_PAE 0x888E 表示的是协议类型，802.1x分配的协议类型为888E
     send_pkt->eth_header.ether_type = htons(ETH_P_PAE);
 
     strcpy(ifr.ifr_name, _interface); //保存接口名字
 
-//#if 的含义是如果#if后面的表达式为true，则编译它控制的代码
-//#ifdef 表示如果有定义
-// AF_LINK链路地址协议
+  /*#if 的含义是如果#if后面的表达式为true，则编译它控制的代码
+   #ifdef 表示如果有定义
+   AF_LINK链路地址协议*/
 #ifdef AF_LINK
     struct ifaddrs *ifhead, *ifa;
     char device[] = "/dev/bpf0";
@@ -300,12 +301,14 @@ int h3c_set_password(char *_password)
 {
     int password_length = (int)strlen(_password);
 
-    //密码最长为15个字符
+    /*PWD_LEN==16，密码最长为15个字符*/
     if (password_length > PWD_LEN - 1)
         return PWD_TOO_LONG;
 
+    /*password 是静态变量，用来存储用户名*/
     strcpy(password, _password);
     return SUCCESS;
+
 }
 
 int h3c_start()
@@ -387,5 +390,6 @@ int h3c_response(int (*success_callback)(void), int (*failure_callback)(void),
 
 void h3c_clean()
 {
+    /*close将描述字的访问计数-1，只有在此计数为0时关闭套接字，而shutdown是不管访问计数的，直接关闭*/
     close(sockfd);
 }

@@ -53,8 +53,9 @@ int got_response_handler() {
 }
 
 void exit_handler(int arg) {
-
-	puts("\nExiting...\n"); //往标准输出中输出字符串
+    /*往标准输出中输出字符串*/
+	puts("\nExiting...\n");
+   /* 客户端往设备端发送退出请求帧，以结束*/
 	h3c_logoff();
 	h3c_clean();
 	exit(0);
@@ -63,5 +64,6 @@ void exit_handler(int arg) {
 void exit_with_echo_on(int arg) {
 	putchar('\n');
 	echo_on();
+	/*exit 通常是用在子程序中用来终结程序用的，使用后程序自动结束，跳回到操作系统，exit(0)表示正常退出*/
 	exit(0);
 }
