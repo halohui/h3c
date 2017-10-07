@@ -261,7 +261,8 @@ int h3c_init(char *_interface)
     * 最后设备驱动再次获得控制，但是请注意BPF是先对数据包过滤再缓冲
     * 通过若干ioctl命令，可以配置BPF设备，把它与每个网络接口相关联，并安装过滤程序，
     * 从而能够选择性的接收输入的分组，BPF设备打开后，应用进程通过读写设备来接收分组，或将分组放入到网络接口队列中
-    * www.gsp.com/cgi-bin/man.cgi?topic=bpf
+    *
+    * http://www.gsp.com/cgi-bin/man.cgi?topic=bpf
     * */
     char device[] = "/dev/bpf0";
     int n = 0;
