@@ -61,6 +61,13 @@ static unsigned char send_buf[BUF_LEN];
 /* 接收缓冲区 */
 static unsigned char recv_buf[BUF_LEN];
 
+
+/*
+*  BPF 提供了以下的方便数组初始化
+*  BPF_STMT(opcode,prand)
+*  BPF_JUMP(opcode,operand,true_offset,false_offset)
+* */
+
 #ifdef AF_LINK
 static struct bpf_insn insns[] =
         {
@@ -153,6 +160,7 @@ static int send_id(unsigned char packet_id)
     return sendout(sizeof(struct packet) + TYPE_LEN + sizeof(VERSION_INFO) + username_length);
 }
 
+/* 注意packid 也传进来了*/
 static void get_md5_digest(unsigned char *digest, unsigned char packet_id, char *passwd, unsigned char *md5data)
 {
     unsigned char msgbuf[128]; // msgbuf = packet_id + passwd + md5data
@@ -163,7 +171,9 @@ static void get_md5_digest(unsigned char *digest, unsigned char packet_id, char 
     msgbuf[0] = packet_id;
     memcpy(msgbuf + 1, passwd, passlen);
     memcpy(msgbuf + 1 + passlen, md5data, 16);
-    // calculate MD5 digest
+
+
+    // calculate MD5 digest，计算MD5摘要
     md5_state_t state;
     md5_init(&state);
     md5_append(&state, (const md5_byte_t *) msgbuf, msglen);
@@ -173,10 +183,12 @@ static void get_md5_digest(unsigned char *digest, unsigned char packet_id, char 
 static int send_md5(unsigned char packet_id, unsigned char *md5data)
 {
     int username_length = (int) strlen(username);
+    /*生成的密文为128位*/
     unsigned char md5[MD5_LEN];
     unsigned short len = htons(sizeof(struct eap) + TYPE_LEN +
                                MD5_LEN_LEN + MD5_LEN + username_length);
 
+    /* pack_id 指明是报文的id*/
     memset(md5, 0, MD5_LEN);
     get_md5_digest(md5, packet_id, password, md5data);
 
@@ -199,6 +211,11 @@ static int send_h3c(unsigned char packet_id)
     unsigned short len = htons(
             sizeof(struct eap) + 1 + 1 + password_length + username_length);
 
+    /*
+    *  发送认证请求信息,所以帧是EAP-PACKET 类型
+    *  EAPOL的Length 计数时不包括头部的长度
+    *  EAP的Length 的字段包含头部的长度
+    */
     set_eapol_header(EAPOL_EAPPACKET, len);
     set_eap_header(EAP_RESPONSE, packet_id, len);
     *eap_type(send_pkt) = EAP_TYPE_H3C;
@@ -375,7 +392,7 @@ int h3c_response(int (*success_callback)(void), int (*failure_callback)(void),
     if (recvin(BUF_LEN) == RECV_ERR)
         return RECV_ERR;
 
-    //EAPOL_EAPPACKET 表示认证信息帧，用于承载认证信息,如果读出来的是这个就
+    // EAPOL_EAPPACKET 表示认证信息帧，用于承载认证信息,如果读出来的是这个就
     if (recv_pkt->eapol_header.type != EAPOL_EAPPACKET)
     {
         /* Got unknown eapol type. */
@@ -406,6 +423,10 @@ int h3c_response(int (*success_callback)(void), int (*failure_callback)(void),
         /*
          * Got request.
          * Response according to request type.
+         * EAP_TYPE_ID ==1 也就是type==1--identifier 用来询问对端的身份
+         * EAP_TYPE_MD5 == 5 也就是type==5--MD5-Challenge (类似于CHAP中的MD5-challange,使用MD5算法)
+         * eap_header.id 用于应答报文和请求报文之间的匹配
+         *
          */
         if (*eap_type(recv_pkt) == EAP_TYPE_ID)
             return send_id(recv_pkt->eap_header.id);

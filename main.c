@@ -38,8 +38,13 @@ int main(int argc, char **argv)
     char *password = NULL;
     int alloc_pw = 0;  //局部变量
 
-    //使用getopt需要使用的头文件为 #include<unistd.h> #include <getopt.h>
-    //"i:u:p:h" 表示i,u,p,h 是选项字符，后面有冒号表示选项元素后面一定有一个参数，且参数保存在optarg中
+    /*
+    * int getopt(int argc,char * const argv[],const char *opstring)
+    * opstring是选项字母组成的字符串，如果该字母后面有冒号，那么这个选项就要求有选项参数
+    * getopt()返回第一个选项，并设置一些全局变量，使用相同的参数再次调用该函数，它将返回
+    * 一个选项，并设置相应的全局变量，如果不再有可识别的选项，将返回-1，此任务相同
+    * "i:u:p:h" 表示i,u,p,h 是选项字符，后面有冒号表示选项元素后面一定有一个参数，且参数保存在optarg中
+    */
     while ((ch = getopt(argc, argv, "i:u:p:h")) != -1)
     {
         switch (ch)
@@ -69,13 +74,13 @@ int main(int argc, char **argv)
         exit(-1);
     }
 
-
     /*interface表示网卡，其中eth0,eth1 表示网卡1; 网卡2 lo表示127.0.0.1 即localhost*/
     if (interface == NULL || username == NULL)
     {
         usage(stderr);
         exit(-1);
     }
+
     /*设置用户名*/
     if (h3c_set_username(username) != SUCCESS)
     {
