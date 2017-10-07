@@ -263,6 +263,7 @@ int h3c_init(char *_interface)
     * 从而能够选择性的接收输入的分组，BPF设备打开后，应用进程通过读写设备来接收分组，或将分组放入到网络接口队列中
     *
     * http://www.gsp.com/cgi-bin/man.cgi?topic=bpf
+    * 使用wireshark抓包工具
     * */
     char device[] = "/dev/bpf0";
     int n = 0;
